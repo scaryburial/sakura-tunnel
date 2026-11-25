@@ -529,6 +529,7 @@ type Options struct {
 	// per second. 0 means unlimited. It is applied in addition to (and never
 	// above) the per-proxy limit, so a client cannot lift the operator limit.
 	UserBandwidthLimit int64
+	UserRateShared     bool
 }
 
 func NewProxy(ctx context.Context, options *Options) (pxy Proxy, err error) {
@@ -540,7 +541,11 @@ func NewProxy(ctx context.Context, options *Options) (pxy Proxy, err error) {
 	if limitBytes > 0 && configurer.GetBaseConfig().Transport.BandwidthLimitMode == types.BandwidthLimitModeServer {
 		limiter = limit.NewBandwidthLimiter(limitBytes)
 	}
-	if options.UserBandwidthLimit > 0 && (limiter == nil || options.UserBandwidthLimit < limitBytes) {
+	if options.UserRateShared && options.UserInfo.User != "" {
+		// One limiter per tenant shared by all of its proxies: changing the limit in
+		// the dashboard takes effect immediately, without restarting clients.
+		limiter = sharedUserLimiter(options.UserInfo.User, options.UserBandwidthLimit)
+	} else if options.UserBandwidthLimit > 0 && (limiter == nil || options.UserBandwidthLimit < limitBytes) {
 		limiter = limit.NewBandwidthLimiter(options.UserBandwidthLimit)
 	}
 
@@ -615,4 +620,40 @@ func (pm *Manager) GetByName(name string) (pxy Proxy, ok bool) {
 	defer pm.mu.RUnlock()
 	pxy, ok = pm.pxys[name]
 	return
+}
+
+var userLimiters sync.Map // username -> *rate.Limiter (shared by all its proxies)
+
+func rateOf(bytes int64) rate.Limit {
+	if bytes <= 0 {
+		return rate.Inf
+	}
+	return rate.Limit(float64(bytes))
+}
+
+func burstOf(bytes int64) int {
+	if bytes <= 0 {
+		return 1
+	}
+	maxInt := int64(^uint(0) >> 1)
+	return int(bytes & maxInt)
+}
+
+func sharedUserLimiter(user string, bytes int64) *rate.Limiter {
+	if v, ok := userLimiters.Load(user); ok {
+		l := v.(*rate.Limiter)
+		l.SetLimit(rateOf(bytes))
+		return l
+	}
+	l := rate.NewLimiter(rateOf(bytes), burstOf(bytes))
+	actual, _ := userLimiters.LoadOrStore(user, l)
+	return actual.(*rate.Limiter)
+}
+
+// SetUserBandwidthLimit hot-updates the shared limiter of a tenant.
+func SetUserBandwidthLimit(user string, bytes int64) {
+	if user == "" {
+		return
+	}
+	_ = sharedUserLimiter(user, bytes)
 }

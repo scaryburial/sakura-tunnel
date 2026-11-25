@@ -65,6 +65,9 @@ type User struct {
 	Note               string   `json:"note"`
 	AllowIPs           []string `json:"allowIPs,omitempty"`
 
+	QuotaMonthly bool  `json:"quotaMonthly,omitempty"`
+	LastResetAt  int64 `json:"lastResetAt,omitempty"`
+
 	TrafficIn  int64 `json:"trafficIn"`
 	TrafficOut int64 `json:"trafficOut"`
 
@@ -309,6 +312,7 @@ type Patch struct {
 	ExpireAt           *int64
 	Note               *string
 	AllowIPs           *[]string
+	QuotaMonthly       *bool
 }
 
 // Update applies a patch to an existing user.
@@ -351,6 +355,10 @@ func (s *Store) Update(name string, p Patch) (User, error) {
 	}
 	if p.AllowIPs != nil {
 		u.AllowIPs = *p.AllowIPs
+	}
+	if p.QuotaMonthly != nil {
+		u.QuotaMonthly = *p.QuotaMonthly
+		u.LastResetAt = time.Now().Unix()
 	}
 	s.dirty = true
 	if err := s.saveLocked(); err != nil {
@@ -482,6 +490,12 @@ func (s *Store) AddTraffic(name string, in, out int64) {
 	if !ok {
 		return
 	}
+	now := time.Now()
+	if u.QuotaMonthly && monthChanged(u.LastResetAt, now) {
+		u.TrafficIn = 0
+		u.TrafficOut = 0
+		u.LastResetAt = now.Unix()
+	}
 	u.TrafficIn += in
 	u.TrafficOut += out
 	s.dirty = true
@@ -554,4 +568,15 @@ func (s *Store) Snapshot() map[string]User {
 		out[k] = *v
 	}
 	return out
+}
+
+// monthChanged reports whether the calendar month differs (monthly quota reset).
+func monthChanged(last int64, now time.Time) bool {
+	if last == 0 {
+		return false
+	}
+	t := time.Unix(last, 0)
+	y1, m1, _ := t.Date()
+	y2, m2, _ := now.Date()
+	return y1 != y2 || m1 != m2
 }

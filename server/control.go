@@ -916,6 +916,7 @@ func (ctl *Control) RegisterProxy(pxyMsg *msg.NewProxy) (remoteAddr string, err 
 		WireProtocol:       ctl.sessionCtx.WireProtocol,
 		UDPPacketCodec:     ctl.sessionCtx.UDPPacketCodec,
 		UserBandwidthLimit: ctl.userBandwidthLimit(),
+		UserRateShared:     ctl.sessionCtx.UserStore != nil,
 	})
 	if err != nil {
 		return remoteAddr, err
