@@ -13,7 +13,7 @@ border-radius:20px;padding:22px;box-shadow:0 18px 40px rgba(123,94,167,.18);marg
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
 label{display:block;font-size:12px;color:#7b5ea7;margin-bottom:6px}
 input{width:100%;padding:10px 12px;border-radius:12px;border:1px solid #ffd7e8;background:#fff;font-size:14px;outline:none}
-input:focus{border-color:var(--pink);box-shadow:0 0 0 3px rgba(255,158,196,.25)}
+.sel{width:100%;padding:10px 12px;border-radius:12px;border:1px solid #ffd7e8;background:#fff;font-size:14px;outline:none}\ninput:focus,.sel:focus{border-color:var(--pink);box-shadow:0 0 0 3px rgba(255,158,196,.25)}
 pre{background:#241b2f;color:#ffd7e8;padding:16px;border-radius:14px;overflow:auto;font-size:12.5px;line-height:1.6;margin:0}
 .btn{margin-top:12px;padding:10px 18px;border:none;border-radius:12px;cursor:pointer;font-size:14px;color:#fff;
 background:linear-gradient(90deg,var(--pink),var(--purple));box-shadow:0 8px 20px rgba(255,158,196,.45)}
@@ -35,10 +35,9 @@ h2{font-size:15px;margin:0 0 12px;color:#5a4780}
 <div><label>本机服务端口</label><input id="lport" value="22"></div>
 <div><label>服务器分配端口</label><input id="rport" value="6000"></div>
 <div><label>隧道名称</label><input id="name" value="my-tunnel"></div>
-<div><label>启用加密（true/false）</label><input id="enc" value="true"></div>
-<div><label>启用压缩（true/false）</label><input id="cmp" value="false"></div>
-<div><label>本隧道限速（如 1MB，空=不限）</label><input id="bw" placeholder="1MB"></div>
-<div><label>限速模式（server/client）</label><input id="bwm" value="server"></div>
+<div><label>启用加密</label><select id="enc" class="sel"><option value="true" selected>开启</option><option value="false">关闭</option></select></div>
+<div><label>启用压缩</label><select id="cmp" class="sel"><option value="false" selected>关闭</option><option value="true">开启</option></select></div>
+
 </div></div>
 
 <div class="card"><h2>② client.toml（复制到客户端）</h2>
