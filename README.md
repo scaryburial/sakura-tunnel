@@ -38,8 +38,8 @@
 ## 🚀 一键安装（服务端）
 
 ```bash
-# 把 YOUR_GITHUB_NAME 换成你的账号（或你自己的 fork / 镜像地址）
-curl -fsSL https://raw.githubusercontent.com/YOUR_GITHUB_NAME/sakura-tunnel/main/install.sh | sudo bash
+# 把 scaryburial 换成你的账号（或你自己的 fork / 镜像地址）
+curl -fsSL https://raw.githubusercontent.com/scaryburial/sakura-tunnel/main/install.sh | sudo bash
 ```
 
 脚本会：下载对应架构二进制 → 装到 `/opt/sakura` → 生成随机面板密码 → 装 systemd → 启动 → 打印面板地址和初始口令。
@@ -54,14 +54,14 @@ curl -fsSL .../install.sh | sudo bash -s -- \
 Windows 服务端：
 
 ```powershell
-iwr -useb https://raw.githubusercontent.com/YOUR_GITHUB_NAME/sakura-tunnel/main/install.ps1 -OutFile install.ps1
+iwr -useb https://raw.githubusercontent.com/scaryburial/sakura-tunnel/main/install.ps1 -OutFile install.ps1
 powershell -ExecutionPolicy Bypass -File .\install.ps1 -BindPort 7443 -WebPort 7500
 ```
 
 Docker：
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_NAME/sakura-tunnel.git && cd sakura-tunnel
+git clone https://github.com/scaryburial/sakura-tunnel.git && cd sakura-tunnel
 docker compose -f docker/docker-compose.yml up -d
 ```
 

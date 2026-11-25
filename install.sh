@@ -19,7 +19,7 @@
 # ============================================================================
 set -euo pipefail
 
-REPO="${SAKURA_REPO:-YOUR_GITHUB_NAME/sakura-tunnel}"
+REPO="${SAKURA_REPO:-scaryburial/sakura-tunnel}"
 VERSION="${SAKURA_VERSION:-latest}"
 MIRROR="${SAKURA_MIRROR:-}"
 INSTALL_DIR="/opt/sakura"

@@ -23,7 +23,7 @@ param(
     [string]$AdminPass = "",
     [string]$Dir = "C:\sakura",
     [string]$Version = "latest",
-    [string]$Repo = "YOUR_GITHUB_NAME/sakura-tunnel",
+    [string]$Repo = "scaryburial/sakura-tunnel",
     [switch]$DryRun
 )
 
