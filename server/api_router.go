@@ -81,6 +81,9 @@ func (svr *Service) registerRouteHandlers(helper *httppkg.RouterRegisterHelper) 
 		netpkg.MakeHTTPGzipHandler(http.StripPrefix("/static/", http.FileServer(helper.AssetsFS))),
 	).Methods("GET")
 
+	// optional 4K artwork for the dashboard (drop files into ./art/)
+	helper.Router.PathPrefix("/art/").Handler(http.StripPrefix("/art/", http.FileServer(http.Dir("./art")))).Methods("GET")
+
 	helper.Router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/static/", http.StatusFound)
 	})

@@ -160,6 +160,18 @@ docker run -d --network host -e SERVER=... -e PORT=... -e USER=... -e TOKEN=... 
 ```bash
 curl -fsSL .../install.sh | sudo bash -s -- --jobs 8
 ```
+## 🎨 换成自己的立绘（4K 也行）
+
+登录页右侧是渐变背景 + 可选立绘层，立绘**不进二进制**，从服务端运行目录的 `art/` 直接读：
+
+```bash
+mkdir -p /opt/sakura/art
+# 把你喜欢的 4K 图（jpg/webp/png 都行）放进去，命名 hero.jpg
+cp 狐妖小红娘-4k.jpg /opt/sakura/art/hero.jpg
+```
+
+浏览器访问 `/art/hero.jpg` 即可，刷新面板生效；删掉文件就退回纯渐变。这样换图不用重新编译，也不会把几 MB 的图片塞进 5.87 MB 的二进制里。
+
 ## 🛠️ 构建
 
 ```bash
