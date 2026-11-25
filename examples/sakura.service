@@ -1,0 +1,14 @@
+[Unit]
+Description=Sakura Tunnel Server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/sakura
+ExecStart=/opt/sakura/sakura -c /opt/sakura/server.toml
+Restart=always
+RestartSec=3
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target

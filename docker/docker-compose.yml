@@ -1,0 +1,17 @@
+services:
+  sakura:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: sakura-tunnel/server:latest
+    container_name: sakura
+    restart: always
+    # 内网穿透要绑一堆端口，host 网络最省事；想隔离可改成 ports: 映射
+    network_mode: host
+    volumes:
+      - ./data:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

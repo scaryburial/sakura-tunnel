@@ -1,0 +1,23 @@
+樱隧 Sakura Tunnel
+Copyright 2026 The Sakura Tunnel Authors
+
+本产品包含由 fatedier 开发的 frp 项目的源代码：
+  https://github.com/fatedier/frp
+  Copyright 2017-2026 The frp Authors
+  以 Apache License 2.0 授权
+
+本项目在其基础上新增/修改了以下部分（同样以 Apache-2.0 发布）：
+  pkg/userdb/              多租户用户库
+  pkg/auth/userauth.go     per-user token 校验器
+  pkg/onetap/              一键接入脚本生成
+  pkg/brand/               产品标识
+  pkg/webui/               中文控制台（静态资源）
+  cmd/sakura/              双角色入口
+  server/http/             面板 API（新增用户/安装相关接口）
+  server/public_router.go  /i /w /dl 公开端点
+  server/control.go        用户策略校验与限速取值
+  server/proxy/proxy.go    用户级限速注入
+  pkg/metrics/mem          按用户流量回调
+  pkg/config/              新增 auth.method="user" 与 auth.userFile
+
+原 frp 项目的完整许可证文本见 LICENSE。

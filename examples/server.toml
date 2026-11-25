@@ -1,0 +1,36 @@
+# ============================================================
+#  樱隧 Sakura Tunnel · 服务端配置样例
+#  文档：docs/快速开始.md
+# ============================================================
+
+# 客户端接入端口
+bindPort = 7443
+
+# 控制台
+webServer.addr = "0.0.0.0"
+webServer.port = 7500
+webServer.user = "admin"
+webServer.password = "换成强密码"
+
+# 多用户模式：每户自己的 token
+auth.method = "user"
+auth.userFile = "./users.json"
+
+# 心跳/工作连接不额外校验（登录已鉴权，链路有 TLS）
+# 如需更严：auth.additionalScopes = ["HeartBeats", "NewWorkConns"]
+# 注意开启后客户端也必须配同样的 additionalScopes，否则会被拒
+auth.additionalScopes = []
+
+transport.tls.force = true
+transport.maxPoolCount = 20
+
+# 允许客户端申请的远程端口
+allowPorts = [
+  { start = 6000, end = 6999 },
+  { start = 17000, end = 17999 }
+]
+
+[log]
+to = "./sakura.log"
+level = "info"
+maxDays = 7
