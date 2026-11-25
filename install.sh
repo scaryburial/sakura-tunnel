@@ -13,7 +13,8 @@
 #    --dir <目录>           安装目录              （默认 /opt/sakura）
 #    --version <版本>       例如 v1.0.0 / latest  （默认 latest）
 #    --mirror <前缀>        下载镜像前缀，如 https://gh-proxy.com/
-#    --dry-run              只打印将要执行的动作
+#    --jobs <N>             下载线程数（默认 4）
+    --dry-run              只打印将要执行的动作
 #
 #  环境变量：SAKURA_REPO / SAKURA_VERSION / SAKURA_MIRROR
 # ============================================================================
@@ -22,6 +23,7 @@ set -euo pipefail
 REPO="${SAKURA_REPO:-scaryburial/sakura-tunnel}"
 VERSION="${SAKURA_VERSION:-latest}"
 MIRROR="${SAKURA_MIRROR:-}"
+JOBS="${SAKURA_JOBS:-4}"
 INSTALL_DIR="/opt/sakura"
 BIND_PORT=7443
 WEB_PORT=7500
@@ -48,12 +50,50 @@ while [ $# -gt 0 ]; do
     --dir)        INSTALL_DIR="${2:?}"; shift 2 ;;
     --version)    VERSION="${2:?}"; shift 2 ;;
     --mirror)     MIRROR="${2:?}"; shift 2 ;;
+    --jobs)       JOBS="${2:?}"; shift 2 ;;
     --dry-run)    DRY_RUN=1; shift ;;
     -h|--help)    usage ;;
     *) warn "忽略未知参数: $1"; shift ;;
   esac
 done
 
+
+# 多线程分段下载（curl --range），失败自动回退单线程
+fetch_parallel() {
+  local url="$1" out="$2" jobs="${3:-4}"
+  [ "$jobs" -le 1 ] && { $DL "$out" "$url"; return $?; }
+
+  local size
+  size=$(curl -fsSIL "$url" 2>/dev/null | awk 'tolower($1)=="content-length:"{v=$2} END{gsub(/\r/,"",v); print v}')
+  if [ -z "$size" ] || [ "$size" -lt 4194304 ]; then
+    $DL "$out" "$url"; return $?
+  fi
+
+  local chunk=$(( (size / jobs) / 1048576 * 1048576 ))
+  [ "$chunk" -le 0 ] && { $DL "$out" "$url"; return $?; }
+
+  echo "  分段下载：$(( size/1048576 ))MB / ${jobs} 线程"
+  local i=0 s e pids=()
+  for (( i=0; i<jobs; i++ )); do
+    s=$(( i * chunk ))
+    e=$(( s + chunk - 1 ))
+    [ "$i" -eq $(( jobs - 1 )) ] && e=$(( size - 1 ))
+    curl -fsSL --retry 2 --range "${s}-${e}" "$url" -o "${out}.part${i}" &
+    pids+=($!)
+  done
+  local fail=0
+  for (( i=0; i<jobs; i++ )); do wait "${pids[$i]}" || fail=1; done
+  if [ "$fail" = "1" ]; then
+    rm -f "${out}".part*; $DL "$out" "$url"; return $?
+  fi
+  : > "$out"
+  for (( i=0; i<jobs; i++ )); do
+    dd if="${out}.part${i}" of="$out" bs=1M seek=$(( i * chunk / 1048576 )) conv=notrunc 2>/dev/null \
+      || { rm -f "${out}".part* "$out"; $DL "$out" "$url"; return $?; }
+  done
+  rm -f "${out}".part*
+  [ "$(wc -c < "$out")" -eq "$size" ] || { $DL "$out" "$url"; return $?; }
+}
 run() {
   if [ "$DRY_RUN" = "1" ]; then
     echo "[dry-run] $*"
@@ -101,9 +141,9 @@ fi
 blue "[2/6] 下载 ${DOWNLOAD_URL}"
 TMP_BIN="${INSTALL_DIR}/.${BIN_NAME}.download"
 if [ "$DRY_RUN" = "0" ]; then
-  if ! $DL "${TMP_BIN}" "${DOWNLOAD_URL}" 2>/dev/null; then
+  if ! fetch_parallel "${DOWNLOAD_URL}" "${TMP_BIN}" "$JOBS"; then
     warn "直链下载失败，尝试 -upx 版本"
-    if ! $DL "${TMP_BIN}" "${DOWNLOAD_URL}-upx" 2>/dev/null; then
+    if ! fetch_parallel "${DOWNLOAD_URL}-upx" "${TMP_BIN}" "$JOBS"; then
       red "下载失败。请检查版本号/网络，或加 --mirror https://gh-proxy.com/"
       exit 1
     fi

@@ -62,7 +62,8 @@ type User struct {
 	CreatedAt          int64  `json:"createdAt"`
 	ExpireAt           int64  `json:"expireAt"`
 	LastSeenAt         int64  `json:"lastSeenAt"`
-	Note               string `json:"note"`
+	Note               string   `json:"note"`
+	AllowIPs           []string `json:"allowIPs,omitempty"`
 
 	TrafficIn  int64 `json:"trafficIn"`
 	TrafficOut int64 `json:"trafficOut"`
@@ -307,6 +308,7 @@ type Patch struct {
 	TrafficQuotaBytes  *int64
 	ExpireAt           *int64
 	Note               *string
+	AllowIPs           *[]string
 }
 
 // Update applies a patch to an existing user.
@@ -346,6 +348,9 @@ func (s *Store) Update(name string, p Patch) (User, error) {
 	}
 	if p.Note != nil {
 		u.Note = *p.Note
+	}
+	if p.AllowIPs != nil {
+		u.AllowIPs = *p.AllowIPs
 	}
 	s.dirty = true
 	if err := s.saveLocked(); err != nil {

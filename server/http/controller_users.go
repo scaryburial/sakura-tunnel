@@ -18,9 +18,11 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/fatedier/frp/pkg/audit"
 	"github.com/fatedier/frp/pkg/brand"
 	"github.com/fatedier/frp/pkg/metrics/mem"
 	"github.com/fatedier/frp/pkg/onetap"
@@ -35,8 +37,9 @@ type userCreateReq struct {
 	MaxProxies         int    `json:"maxProxies"`
 	BandwidthLimitKbps int    `json:"bandwidthLimitKbps"`
 	TrafficQuotaBytes  int64  `json:"trafficQuotaBytes"`
-	ExpireAt           int64  `json:"expireAt"`
-	Note               string `json:"note"`
+	ExpireAt           int64    `json:"expireAt"`
+	Note               string   `json:"note"`
+	AllowIPs           []string `json:"allowIPs,omitempty"`
 }
 
 // userPatchReq is the body accepted by PUT /api/v2/users/{user}. Nil fields are
@@ -46,8 +49,9 @@ type userPatchReq struct {
 	MaxProxies         *int    `json:"maxProxies"`
 	BandwidthLimitKbps *int    `json:"bandwidthLimitKbps"`
 	TrafficQuotaBytes  *int64  `json:"trafficQuotaBytes"`
-	ExpireAt           *int64  `json:"expireAt"`
-	Note               *string `json:"note"`
+	ExpireAt           *int64    `json:"expireAt"`
+	Note               *string   `json:"note"`
+	AllowIPs           *[]string `json:"allowIPs,omitempty"`
 }
 
 func (c *Controller) requireStore() (*userdb.Store, error) {
@@ -145,6 +149,7 @@ func (c *Controller) APIV2UserList(ctx *httppkg.Context) (any, error) {
 				ExpireAt:           u.ExpireAt,
 				LastSeenAt:         u.LastSeenAt,
 				Note:               u.Note,
+				AllowIPs:           u.AllowIPs,
 			})
 		}
 	}
@@ -177,6 +182,7 @@ func (c *Controller) APIV2UserCreate(ctx *httppkg.Context) (any, error) {
 		TrafficQuotaBytes:  req.TrafficQuotaBytes,
 		ExpireAt:           req.ExpireAt,
 		Note:               req.Note,
+		AllowIPs:           req.AllowIPs,
 	})
 	if err != nil {
 		switch {
@@ -209,6 +215,7 @@ func (c *Controller) APIV2UserUpdate(ctx *httppkg.Context) (any, error) {
 		TrafficQuotaBytes:  req.TrafficQuotaBytes,
 		ExpireAt:           req.ExpireAt,
 		Note:               req.Note,
+		AllowIPs:           req.AllowIPs,
 	})
 	if err != nil {
 		if errors.Is(err, userdb.ErrNotFound) {
@@ -341,4 +348,41 @@ func (c *Controller) uptimeSec() int64 {
 		return 0
 	}
 	return int64(time.Since(c.startedAt).Seconds())
+}
+
+// APIV2Audit returns the most recent audit events.
+func (c *Controller) APIV2Audit(ctx *httppkg.Context) (any, error) {
+	limit := 100
+	if v := ctx.Query("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 2000 {
+			limit = n
+		}
+	}
+	if c.auditLog == nil {
+		return map[string]any{"items": []any{}, "enabled": false}, nil
+	}
+	events := c.auditLog.Tail(limit)
+	q := strings.ToLower(strings.TrimSpace(ctx.Query("q")))
+	if q != "" {
+		filtered := make([]audit.Event, 0, len(events))
+		for _, e := range events {
+			if strings.Contains(strings.ToLower(e.User+" "+e.IP+" "+e.Action+" "+e.Detail), q) {
+				filtered = append(filtered, e)
+			}
+		}
+		events = filtered
+	}
+	return map[string]any{"items": events, "enabled": true, "path": c.auditLog.Path()}, nil
+}
+
+// APIV2SecurityStatus exposes the built-in protection settings.
+func (c *Controller) APIV2SecurityStatus(ctx *httppkg.Context) (any, error) {
+	sec := c.serverCfg.Security
+	return map[string]any{
+		"maxAuthFails":       sec.MaxAuthFails,
+		"banMinutes":         sec.BanMinutes,
+		"auditLog":           sec.AuditLog,
+		"panelIPAllowList":   sec.PanelIPAllowList,
+		"tlsForce":           c.serverCfg.Transport.TLS.Force,
+	}, nil
 }

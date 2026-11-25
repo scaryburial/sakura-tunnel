@@ -35,6 +35,7 @@ import (
 	quic "github.com/quic-go/quic-go"
 	"github.com/samber/lo"
 
+	"github.com/fatedier/frp/pkg/audit"
 	"github.com/fatedier/frp/pkg/auth"
 	v1 "github.com/fatedier/frp/pkg/config/v1"
 	"github.com/fatedier/frp/pkg/config/v1/validation"
@@ -44,6 +45,7 @@ import (
 	"github.com/fatedier/frp/pkg/nathole"
 	plugin "github.com/fatedier/frp/pkg/plugin/server"
 	"github.com/fatedier/frp/pkg/proto/wire"
+	"github.com/fatedier/frp/pkg/security"
 	"github.com/fatedier/frp/pkg/ssh"
 	"github.com/fatedier/frp/pkg/transport"
 	httppkg "github.com/fatedier/frp/pkg/util/http"
@@ -136,6 +138,9 @@ type Service struct {
 
 	// multi-tenant user store, non-nil when auth.method is "user"
 	userStore *userdb.Store
+	// built-in protections
+	ban   *security.BanManager
+	audit *audit.Logger
 
 	tlsConfig *tls.Config
 
@@ -181,6 +186,9 @@ func NewService(cfg *v1.ServerConfig) (*Service, error) {
 		cfg:               cfg,
 		ctx:               context.Background(),
 	}
+
+	// Audit trail (best effort: a broken log must not stop the server).
+	svr.audit, _ = audit.Open(cfg.Security.AuditLog)
 
 	// Create tcpmux httpconnect multiplexer.
 	if cfg.TCPMuxHTTPConnectPort > 0 {
@@ -900,13 +908,34 @@ func (svr *Service) RegisterControl(
 	xl.Infof("client login info: ip [%s] version [%s] hostname [%s] os [%s] arch [%s]",
 		ctlConn.RemoteAddr().String(), loginMsg.Version, loginMsg.Hostname, loginMsg.Os, loginMsg.Arch)
 
+	// Built-in protection: an IP that keeps failing authentication is banned.
+	remoteIP, _, _ := net.SplitHostPort(ctlConn.RemoteAddr().String())
+	if err := svr.ban.Allow(remoteIP); err != nil {
+		svr.audit.Write(audit.Event{Action: "ban", User: loginMsg.User, IP: remoteIP, OK: false, Detail: err.Error()})
+		return nil, err
+	}
+
 	// Check auth.
 	authVerifier := svr.auth.Verifier
 	if internal && loginMsg.ClientSpec.AlwaysAuthPass {
 		authVerifier = auth.AlwaysPassVerifier
 	}
 	if err := authVerifier.VerifyLogin(loginMsg); err != nil {
+		svr.ban.Fail(remoteIP)
+		svr.audit.Write(audit.Event{Action: "login", User: loginMsg.User, IP: remoteIP, OK: false, Detail: err.Error()})
 		return nil, err
+	}
+	svr.ban.Reset(remoteIP)
+	svr.audit.Write(audit.Event{Action: "login", User: loginMsg.User, IP: remoteIP, OK: true, Detail: loginMsg.Hostname})
+
+	// Per-tenant IP allow list.
+	if svr.userStore != nil && loginMsg.User != "" {
+		if u, ok := svr.userStore.Get(loginMsg.User); ok && len(u.AllowIPs) > 0 {
+			if !security.IPAllowed(remoteIP, u.AllowIPs) {
+				svr.audit.Write(audit.Event{Action: "login", User: loginMsg.User, IP: remoteIP, OK: false, Detail: "IP 不在白名单"})
+				return nil, fmt.Errorf("source IP %s is not allowed for user [%s]", remoteIP, loginMsg.User)
+			}
+		}
 	}
 
 	ctl, err := NewControl(ctx, &SessionContext{

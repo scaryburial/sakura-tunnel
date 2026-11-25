@@ -15,11 +15,15 @@
 package server
 
 import (
+	"net"
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	httppkg "github.com/fatedier/frp/pkg/util/http"
+	"github.com/fatedier/frp/pkg/audit"
+	"github.com/fatedier/frp/pkg/security"
 	netpkg "github.com/fatedier/frp/pkg/util/net"
 	adminapi "github.com/fatedier/frp/server/http"
 )
@@ -28,7 +32,7 @@ func (svr *Service) registerRouteHandlers(helper *httppkg.RouterRegisterHelper) 
 	helper.Router.HandleFunc("/healthz", healthz)
 	subRouter := helper.Router.NewRoute().Subrouter()
 
-	subRouter.Use(helper.AuthMiddleware)
+	subRouter.Use(svr.panelGuard(helper.AuthMiddleware))
 	subRouter.Use(httppkg.NewRequestLogger)
 
 	// metrics
@@ -37,6 +41,7 @@ func (svr *Service) registerRouteHandlers(helper *httppkg.RouterRegisterHelper) 
 	}
 
 	apiController := adminapi.NewController(svr.cfg, svr.clientRegistry, svr.pxyManager, svr.userStore)
+	apiController.SetAudit(svr.audit)
 
 	// apis
 	subRouter.HandleFunc("/api/serverinfo", httppkg.MakeHTTPHandlerFunc(apiController.APIServerInfo)).Methods("GET")
@@ -57,6 +62,8 @@ func (svr *Service) registerRouteHandlers(helper *httppkg.RouterRegisterHelper) 
 	v2UserRouter.HandleFunc("/api/v2/users/{user}/token", httppkg.MakeHTTPHandlerFuncV2(apiController.APIV2UserResetToken)).Methods("POST")
 	v2UserRouter.HandleFunc("/api/v2/users/{user}/traffic", httppkg.MakeHTTPHandlerFuncV2(apiController.APIV2UserResetTraffic)).Methods("DELETE", "POST")
 	v2UserRouter.HandleFunc("/api/v2/users/{user}/install", httppkg.MakeHTTPHandlerFuncV2(apiController.APIV2UserInstall)).Methods("GET")
+	subRouter.HandleFunc("/api/v2/audit", httppkg.MakeHTTPHandlerFuncV2(apiController.APIV2Audit)).Methods("GET")
+	subRouter.HandleFunc("/api/v2/security/status", httppkg.MakeHTTPHandlerFuncV2(apiController.APIV2SecurityStatus)).Methods("GET")
 	subRouter.HandleFunc("/api/v2/system/info", httppkg.MakeHTTPHandlerFuncV2(apiController.APIV2SystemInfo)).Methods("GET")
 	subRouter.HandleFunc("/api/v2/system/prune", httppkg.MakeHTTPHandlerFuncV2(apiController.APIV2SystemPrune)).Methods("POST")
 	subRouter.HandleFunc("/api/v2/clients", httppkg.MakeHTTPHandlerFuncV2(apiController.APIV2ClientList)).Methods("GET")
@@ -84,4 +91,41 @@ func (svr *Service) registerRouteHandlers(helper *httppkg.RouterRegisterHelper) 
 
 func healthz(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(200)
+}
+
+// statusRecorder captures the status code written by the wrapped handler.
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (r *statusRecorder) WriteHeader(code int) {
+	r.status = code
+	r.ResponseWriter.WriteHeader(code)
+}
+
+// panelGuard enforces the IP allow list and brute force ban on the dashboard and
+// API, and records authentication failures.
+func (svr *Service) panelGuard(authMW mux.MiddlewareFunc) mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+			if err := svr.ban.Allow(ip); err != nil {
+				http.Error(w, err.Error(), http.StatusTooManyRequests)
+				return
+			}
+			if len(svr.cfg.Security.PanelIPAllowList) > 0 && !security.IPAllowed(ip, svr.cfg.Security.PanelIPAllowList) {
+				http.Error(w, "panel access denied for this IP", http.StatusForbidden)
+				return
+			}
+			rec := &statusRecorder{ResponseWriter: w, status: 200}
+			authMW(next).ServeHTTP(rec, r)
+			if rec.status == http.StatusUnauthorized {
+				svr.ban.Fail(ip)
+				svr.audit.Write(audit.Event{Action: "panel-login", IP: ip, OK: false, Detail: "401"})
+			} else if rec.status < 400 {
+				svr.ban.Reset(ip)
+			}
+		})
+	}
 }

@@ -25,6 +25,9 @@ type ServerConfig struct {
 	APIMetadata
 
 	Auth AuthServerConfig `json:"auth,omitempty"`
+
+	// Security holds the built-in brute force / audit / panel protections.
+	Security ServerSecurityConfig `json:"security,omitempty"`
 	// BindAddr specifies the address that the server binds to. By default,
 	// this value is "0.0.0.0".
 	BindAddr string `json:"bindAddr,omitempty"`
@@ -215,4 +218,23 @@ type SSHTunnelGateway struct {
 
 func (c *SSHTunnelGateway) Complete() {
 	c.AutoGenPrivateKeyPath = util.EmptyOr(c.AutoGenPrivateKeyPath, "./.autogen_ssh_key")
+}
+
+// ServerSecurityConfig configures the built-in protections.
+type ServerSecurityConfig struct {
+	// MaxAuthFails is the number of failed authentications from one IP before it
+	// is temporarily banned. 0 disables the feature.
+	MaxAuthFails int `json:"maxAuthFails,omitempty"`
+	// BanMinutes is how long a banned IP stays blocked.
+	BanMinutes int `json:"banMinutes,omitempty"`
+	// AuditLog is the JSONL audit trail path. Empty disables auditing.
+	AuditLog string `json:"auditLog,omitempty"`
+	// PanelIPAllowList restricts dashboard/API access to these IPs or CIDRs.
+	PanelIPAllowList []string `json:"panelIPAllowList,omitempty"`
+}
+
+func (c *ServerSecurityConfig) Complete() {
+	c.MaxAuthFails = util.EmptyOr(c.MaxAuthFails, 5)
+	c.BanMinutes = util.EmptyOr(c.BanMinutes, 10)
+	c.AuditLog = util.EmptyOr(c.AuditLog, "./audit.log")
 }

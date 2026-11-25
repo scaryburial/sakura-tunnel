@@ -28,6 +28,7 @@ import (
 	httppkg "github.com/fatedier/frp/pkg/util/http"
 	"github.com/fatedier/frp/pkg/util/log"
 	"github.com/fatedier/frp/pkg/util/version"
+	"github.com/fatedier/frp/pkg/audit"
 	"github.com/fatedier/frp/pkg/userdb"
 	"github.com/fatedier/frp/server/http/model"
 	"github.com/fatedier/frp/server/proxy"
@@ -40,6 +41,7 @@ type Controller struct {
 	clientRegistry *registry.ClientRegistry
 	pxyManager     ProxyManager
 	userStore      *userdb.Store
+	auditLog       *audit.Logger
 	startedAt      time.Time
 }
 
@@ -369,3 +371,6 @@ func getConfFromConfigurer(cfg v1.ProxyConfigurer) any {
 	}
 	return outBase
 }
+
+// SetAudit attaches the audit logger used by the write endpoints.
+func (c *Controller) SetAudit(l *audit.Logger) { c.auditLog = l }

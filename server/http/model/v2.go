@@ -75,6 +75,7 @@ type V2UserResp struct {
 	ExpireAt           int64  `json:"expireAt"`
 	LastSeenAt         int64  `json:"lastSeenAt"`
 	Note               string `json:"note"`
+	AllowIPs           []string `json:"allowIPs,omitempty"`
 }
 
 // V2UserCreateResp is returned when a tenant is created or its token reset.

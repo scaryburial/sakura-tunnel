@@ -28,7 +28,8 @@
 
 | 产物 | 未压缩 | UPX `--best --lzma` |
 |---|---|---|
-| 上游 frp 服务端 + 客户端 | 37.0 MB | — |
+| 上游 frp v0.72.0 官方压缩包（含 frps + frpc） | 13.9 MB（tar.gz） | — |
+| 樱隧 UPX 单文件（服务端+客户端） | 20.77 MB | **5.87 MB** |
 | **樱隧 · linux/amd64** | 20.77 MB | **5.87 MB** |
 | **樱隧 · linux/arm64** | 18.50 MB | **4.75 MB** |
 | **樱隧 · windows/amd64** | 20.75 MB | **5.81 MB** |
@@ -48,7 +49,7 @@ curl -fsSL https://raw.githubusercontent.com/scaryburial/sakura-tunnel/main/inst
 
 ```bash
 curl -fsSL .../install.sh | sudo bash -s -- \
-  --bind-port 7443 --web-port 7500 --admin-user admin --admin-pass '你的密码'
+  --bind-port 7443 --web-port 7500 --admin-user admin --admin-pass '你的密码' --jobs 8
 ```
 
 Windows 服务端：
@@ -139,6 +140,26 @@ docker run -d --network host -e SERVER=... -e PORT=... -e USER=... -e TOKEN=... 
 
 > 服务端从运行目录的 `clients/` 提供下载，把三平台二进制丢进去即可；请求的正好是本机平台时会把自身下发。
 
+
+## 🛡️ 内置安全（三个实用项，不堆功能）
+
+| 功能 | 配置 | 行为 |
+|---|---|---|
+| **暴力破解封禁** | `security.maxAuthFails = 5`、`security.banMinutes = 10` | 同一 IP 5 分钟内认证失败 5 次 → 封 10 分钟；面板与客户端登录都生效，返回中文原因 |
+| **租户 IP 白名单** | 面板用户编辑里的「允许 IP」，或 API `allowIPs: ["1.2.3.4","10.0.0.0/8"]` | 只允许这些来源 IP 用该 token 接入；支持 CIDR |
+| **审计日志** | `security.auditLog = "./audit.log"`（默认开） | 登录成功/失败、封禁、面板 401 全部记 JSONL；面板「日志」页或 `GET /api/v2/audit?limit=200` 查看 |
+
+面板入口还可加一层 IP 白名单：`security.panelIPAllowList = ["1.2.3.4"]`，非白名单 IP 访问 `/` 与 `/api/*` 直接 403。
+
+还有：`transport.tls.force = true` 强制加密、`allowPorts` 限制可申请端口、token 常量时间比较。
+
+## ⚡ 多线程下载
+
+`install.sh` 默认 4 线程分段下载（curl `--range`），大文件快很多，失败自动回退单线程：
+
+```bash
+curl -fsSL .../install.sh | sudo bash -s -- --jobs 8
+```
 ## 🛠️ 构建
 
 ```bash
