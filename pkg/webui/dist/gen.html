@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>樱隧 · 客户端配置生成器</title>
+<style>
+:root{--pink:#ff9ec4;--purple:#7b5ea7}
+*{box-sizing:border-box}body{margin:0;font-family:"PingFang SC","Microsoft YaHei",system-ui;
+background:radial-gradient(120% 120% at 20% 0%,#ffd7e8 0%,#f3d9ff 45%,#cbb8ff 100%);min-height:100vh;color:#3a2b52}
+.wrap{max-width:960px;margin:0 auto;padding:32px 20px 64px}
+h1{font-size:24px;margin:0 0 6px}h1 span{background:linear-gradient(90deg,var(--pink),var(--purple));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:#7b5ea7;font-size:13px;margin-bottom:22px}
+.card{background:rgba(255,255,255,.72);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.9);
+border-radius:20px;padding:22px;box-shadow:0 18px 40px rgba(123,94,167,.18);margin-bottom:18px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+label{display:block;font-size:12px;color:#7b5ea7;margin-bottom:6px}
+input{width:100%;padding:10px 12px;border-radius:12px;border:1px solid #ffd7e8;background:#fff;font-size:14px;outline:none}
+input:focus{border-color:var(--pink);box-shadow:0 0 0 3px rgba(255,158,196,.25)}
+pre{background:#241b2f;color:#ffd7e8;padding:16px;border-radius:14px;overflow:auto;font-size:12.5px;line-height:1.6;margin:0}
+.btn{margin-top:12px;padding:10px 18px;border:none;border-radius:12px;cursor:pointer;font-size:14px;color:#fff;
+background:linear-gradient(90deg,var(--pink),var(--purple));box-shadow:0 8px 20px rgba(255,158,196,.45)}
+.btn:active{transform:translateY(1px)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.tip{font-size:12px;color:#9a86c0;margin-top:8px}
+h2{font-size:15px;margin:0 0 12px;color:#5a4780}
+</style></head><body><div class="wrap">
+<h1><span>樱隧 · 客户端配置生成器</span></h1>
+<div class="sub">填几项基础信息 → 一键复制 → 粘到客户端就能连。也可以直接从面板「一键接入」跳转过来自动填好。</div>
+
+<div class="card"><h2>① 连接参数</h2>
+<div class="grid">
+<div><label>服务器地址</label><input id="host" value="127.0.0.1"></div>
+<div><label>接入端口</label><input id="port" value="7443"></div>
+<div><label>用户名（租户）</label><input id="user" value="alice"></div>
+<div><label>密钥 token</label><input id="token" placeholder="sk_xxxxxxxx"></div>
+<div><label>本机服务 IP</label><input id="lip" value="127.0.0.1"></div>
+<div><label>本机服务端口</label><input id="lport" value="22"></div>
+<div><label>服务器分配端口</label><input id="rport" value="6000"></div>
+<div><label>隧道名称</label><input id="name" value="my-tunnel"></div>
+<div><label>启用加密（true/false）</label><input id="enc" value="true"></div>
+<div><label>启用压缩（true/false）</label><input id="cmp" value="false"></div>
+<div><label>本隧道限速（如 1MB，空=不限）</label><input id="bw" placeholder="1MB"></div>
+<div><label>限速模式（server/client）</label><input id="bwm" value="server"></div>
+</div></div>
+
+<div class="card"><h2>② client.toml（复制到客户端）</h2>
+<pre id="out"></pre>
+<div class="row"><button class="btn" onclick="copyCfg()">复制配置</button>
+<button class="btn" style="background:linear-gradient(90deg,#9a86c0,#7b5ea7)" onclick="copyCmd()">复制一键命令</button></div>
+<div class="tip">Windows 客户端：把文本保存为 client.toml，然后 <code>sakura.exe client -c client.toml</code></div></div>
+
+<div class="card"><h2>③ 懒得装？直接一条命令</h2>
+<pre id="cmd"></pre>
+<div class="row"><button class="btn" onclick="copyCmd()">复制这条命令</button></div>
+<div class="tip">Linux/macOS 在终端执行；Windows 在 PowerShell 执行。</div></div>
+
+</div><script>
+const $=id=>document.getElementById(id);
+function cfg(){
+ const h=$('host').value,p=$('port').value,u=$('user').value,t=$('token').value||'sk_请填入密钥';
+ return `serverAddr = "${h}"
+serverPort = ${p}
+user = "${u}"
+loginFailExit = false
+
+[auth]
+method = "user"
+token = "${t}"
+
+[transport.tls]
+enable = true
+
+[log]
+to = "console"
+level = "info"
+
+[[proxies]]
+name = "${$('name').value}"
+type = "tcp"
+localIP = "${$('lip').value}"
+localPort = ${$('lport').value}
+remotePort = ${$('rport').value}
+transport.useEncryption = ${$('enc').value}
+transport.useCompression = ${$('cmp').value}
+${$('bw').value?`transport.bandwidthLimit = \"${$('bw').value}\"\ntransport.bandwidthLimitMode = \"${$('bwm').value}\"`:''}
+`;}
+function cmd(){
+ const base=`http://${$('host').value}:${$('port').value}`,t=$('token').value||'sk_xxx';
+ return `# Linux / macOS\ncurl -fsSL ${base}/i/${t} | bash -s -- --local ${$('lip').value}:${$('lport').value} --remote-port ${$('rport').value}\n\n# Windows PowerShell\npowershell -NoProfile -ExecutionPolicy Bypass -Command "iwr -useb ${base}/w/${t} | iex"`;
+}
+function render(){$('out').textContent=cfg();$('cmd').textContent=cmd();}
+document.querySelectorAll('input').forEach(i=>i.addEventListener('input',render));
+function copyText(txt,btn){navigator.clipboard.writeText(txt).then(()=>{const o=btn.textContent;btn.textContent='已复制 ✓';setTimeout(()=>btn.textContent=o,1200)}).catch(()=>alert('复制失败，请手动选择'))}
+function copyCfg(){copyText(cfg(),event.target)}function copyCmd(){copyText(cmd(),event.target)}
+const q=new URLSearchParams(location.search);
+['host','port','user','token','lip','lport','rport','name','enc','cmp','bw','bwm'].forEach(k=>{if(q.get(k))$(k).value=q.get(k)});
+render();
+</script></body></html>

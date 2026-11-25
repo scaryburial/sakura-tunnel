@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>樱隧 · 服务端控制台</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='15' fill='%23fff3f8'/><g fill='%23ff9ec4'><circle cx='16' cy='9' r='5'/><circle cx='22' cy='14' r='5'/><circle cx='20' cy='21' r='5'/><circle cx='12' cy='21' r='5'/><circle cx='10' cy='14' r='5'/></g><circle cx='16' cy='16' r='3' fill='%23ffe9f2'/></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ==================== 内联 SVG 精灵（图标 / 花瓣 / 看板娘） ==================== -->
+<svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+  <symbol id="ic-sakura" viewBox="0 0 24 24">
+    <g fill="currentColor">
+      <path id="skPetal" d="M12 11.5c-1.7-.85-2.75-2.2-2.75-3.8 0-1.65 1.25-2.95 2.75-2.95s2.75 1.3 2.75 2.95c0 1.6-1.05 2.95-2.75 3.8z"/>
+      <use href="#skPetal" transform="rotate(72 12 12)"/>
+      <use href="#skPetal" transform="rotate(144 12 12)"/>
+      <use href="#skPetal" transform="rotate(216 12 12)"/>
+      <use href="#skPetal" transform="rotate(288 12 12)"/>
+    </g>
+    <circle cx="12" cy="12" r="1.7" fill="#ffe9f2"/>
+  </symbol>
+
+  <symbol id="petal" viewBox="0 0 32 32">
+    <path d="M16 2c5 5.2 7 13.2.7 27L16 23.6 15.3 29C8 15.2 11 6.2 16 2z" fill="currentColor" opacity=".92"/>
+    <path d="M16 6.4c2.6 3.4 3.6 8.4 1.2 15" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="1.2" stroke-linecap="round"/>
+  </symbol>
+
+  <symbol id="ic-overview" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="7.4" height="7.4" rx="2.2"/>
+      <rect x="13.6" y="3" width="7.4" height="4.8" rx="2.2"/>
+      <rect x="3" y="13.6" width="7.4" height="7.4" rx="2.2"/>
+      <rect x="13.6" y="10.8" width="7.4" height="10.2" rx="2.2"/>
+    </g>
+  </symbol>
+
+  <symbol id="ic-tunnel" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9.6 14.4 14.4 9.6"/>
+      <path d="M11.2 6.6 12.7 5.1a3.9 3.9 0 0 1 5.5 5.5L16.7 12"/>
+      <path d="M12.8 17.4 11.3 18.9a3.9 3.9 0 0 1-5.5-5.5L7.3 12"/>
+    </g>
+  </symbol>
+
+  <symbol id="ic-users" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="9.4" cy="8.6" r="3.5"/>
+      <path d="M3.4 19.6c.45-3.3 2.95-5 6-5s5.55 1.7 6 5"/>
+      <path d="M16.2 5.6a3.3 3.3 0 0 1 0 6.1"/>
+      <path d="M17.7 14.9c1.6.6 2.6 2 2.9 3.9"/>
+    </g>
+  </symbol>
+
+  <symbol id="ic-key" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="8.2" cy="15.4" r="4.2"/>
+      <path d="M11.2 12.4 20 3.6"/>
+      <path d="M17.2 6.4 19.4 8.6"/>
+      <path d="M15.2 8.4 17.4 10.6"/>
+    </g>
+  </symbol>
+
+  <symbol id="ic-terminal" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="16" rx="3.2"/>
+      <path d="M7.4 9.6 10.4 12l-3 2.4"/>
+      <path d="M12.6 15.4h4"/>
+    </g>
+  </symbol>
+
+  <symbol id="ic-settings" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3.1"/>
+      <path d="M12 2.8v2.5M12 18.7v2.5M2.8 12h2.5M18.7 12h2.5M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/>
+    </g>
+  </symbol>
+
+  <symbol id="ic-moon" viewBox="0 0 24 24">
+    <path d="M20.2 13.6A8.3 8.3 0 0 1 10.4 3.8a8.4 8.4 0 1 0 9.8 9.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+
+  <symbol id="ic-sun" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M12 2.9v2.3M12 18.8v2.3M2.9 12h2.3M18.8 12h2.3M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7"/>
+    </g>
+  </symbol>
+
+  <symbol id="ic-logout" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14.4 5.4H6.6a2.2 2.2 0 0 0-2.2 2.2v8.8a2.2 2.2 0 0 0 2.2 2.2h7.8"/>
+      <path d="M13 12h8"/>
+      <path d="M18 8.9 21.1 12 18 15.1"/>
+    </g>
+  </symbol>
+
+  <symbol id="ic-search" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="10.8" cy="10.8" r="6.1"/>
+      <path d="M15.4 15.4 20.4 20.4"/>
+    </g>
+  </symbol>
+
+  <symbol id="ic-plus" viewBox="0 0 24 24">
+    <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </symbol>
+
+  <symbol id="ic-copy" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="9" y="9" width="11.2" height="11.2" rx="2.8"/>
+      <path d="M15.2 5.6A2.2 2.2 0 0 0 13 4H6.8A2.8 2.8 0 0 0 4 6.8V13a2.2 2.2 0 0 0 1.6 2.1"/>
+    </g>
+  </symbol>
+
+  <symbol id="ic-refresh" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 12a8 8 0 1 1-2.4-5.7"/>
+      <path d="M20 4.6V10h-5.4"/>
+    </g>
+  </symbol>
+
+  <symbol id="ic-trash" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4.6 7h14.8"/>
+      <path d="M9.6 7V4.8h4.8V7"/>
+      <path d="M6.6 7l.9 12.1a2 2 0 0 0 2 1.9h5.1a2 2 0 0 0 2-1.9L17.4 7"/>
+      <path d="M10.6 11v6M13.4 11v6"/>
+    </g>
+  </symbol>
+
+  <symbol id="ic-close" viewBox="0 0 24 24">
+    <path d="M6.2 6.2 17.8 17.8M17.8 6.2 6.2 17.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </symbol>
+
+  <symbol id="ic-check" viewBox="0 0 24 24">
+    <path d="M5.2 12.8 9.6 17.2 18.8 7" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+
+  <symbol id="ic-warn" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3.8 20.8 19.6H3.2z"/>
+      <path d="M12 9.6v4.5"/>
+      <circle cx="12" cy="16.9" r=".95" fill="currentColor" stroke="none"/>
+    </g>
+  </symbol>
+
+  <symbol id="ic-info" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="8.6"/>
+      <path d="M12 11v5.4"/>
+      <circle cx="12" cy="8.2" r=".95" fill="currentColor" stroke="none"/>
+    </g>
+  </symbol>
+
+  <symbol id="ic-pulse" viewBox="0 0 24 24">
+    <path d="M2.8 12.6h3.4l2.3-6.2 3.1 12.2 2.6-8.2 1.9 4.2h4.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+
+  <symbol id="ic-user" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="8.4" r="3.6"/>
+      <path d="M5 20c.5-3.6 3.4-5.6 7-5.6s6.5 2 7 5.6"/>
+    </g>
+  </symbol>
+
+  <symbol id="ic-server" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="6.4" rx="2.2"/>
+      <rect x="3" y="13.6" width="18" height="6.4" rx="2.2"/>
+      <path d="M6.6 7.2h.02M6.6 16.8h.02" stroke-width="2.4"/>
+    </g>
+  </symbol>
+
+  <symbol id="ic-up" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 19.6V5.4"/>
+      <path d="M6.6 10.8 12 5.4l5.4 5.4"/>
+    </g>
+  </symbol>
+
+  <symbol id="ic-down" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 4.4v14.2"/>
+      <path d="M6.6 13.2 12 18.6l5.4-5.4"/>
+    </g>
+  </symbol>
+
+  <symbol id="ic-clock" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="8.6"/>
+      <path d="M12 7.4V12l3.2 2.2"/>
+    </g>
+  </symbol>
+
+  <symbol id="ic-download" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3.8v11"/>
+      <path d="M7.4 10.4 12 15l4.6-4.6"/>
+      <path d="M4.6 19.4h14.8"/>
+    </g>
+  </symbol>
+
+  <!-- ================= Q 版看板娘 ================= -->
+  <symbol id="mascot" viewBox="0 0 240 260">
+    <defs>
+      <linearGradient id="mHair" gradientUnits="userSpaceOnUse" x1="72" y1="38" x2="152" y2="212">
+        <stop offset="0" stop-color="#ffc9dd"/>
+        <stop offset="0.5" stop-color="#ff9ec4"/>
+        <stop offset="1" stop-color="#e07aa1"/>
+      </linearGradient>
+      <linearGradient id="mSkin" gradientUnits="userSpaceOnUse" x1="92" y1="80" x2="124" y2="192">
+        <stop offset="0" stop-color="#fff7f9"/>
+        <stop offset="1" stop-color="#ffe3ea"/>
+      </linearGradient>
+      <linearGradient id="mDress" gradientUnits="userSpaceOnUse" x1="80" y1="190" x2="168" y2="240">
+        <stop offset="0" stop-color="#a184d8"/>
+        <stop offset="1" stop-color="#6a4d96"/>
+      </linearGradient>
+      <radialGradient id="mGlow" cx="0.5" cy="0.5" r="0.5">
+        <stop offset="0" stop-color="#ffd7e8" stop-opacity=".85"/>
+        <stop offset="1" stop-color="#ffd7e8" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+
+    <circle cx="120" cy="122" r="106" fill="url(#mGlow)"/>
+    <ellipse cx="120" cy="246" rx="60" ry="8.5" fill="#7b5ea7" opacity=".16"/>
+
+    <!-- 双马尾 -->
+    <path d="M52 96C26 104 14 138 22 172c6 26 22 38 36 32-10-26-14-72 2-96z" fill="url(#mHair)"/>
+    <path d="M188 96c26 8 38 42 30 76-6 26-22 38-36 32 10-26 14-72-2-96z" fill="url(#mHair)"/>
+    <!-- 后发 -->
+    <path d="M120 38c52 0 80 38 78 82-2 36-18 60-30 68H72c-12-8-28-32-30-68-2-44 26-82 78-82z" fill="url(#mHair)"/>
+    <!-- 发绳蝴蝶结 -->
+    <g stroke="#e3799f" stroke-width="2">
+      <ellipse cx="43" cy="103" rx="9.5" ry="6.6" transform="rotate(-20 43 103)" fill="#ffd7e8"/>
+      <ellipse cx="61" cy="103" rx="9.5" ry="6.6" transform="rotate(20 61 103)" fill="#ffd7e8"/>
+      <circle cx="52" cy="103" r="3.8" fill="#fff2f8"/>
+      <ellipse cx="179" cy="103" rx="9.5" ry="6.6" transform="rotate(20 179 103)" fill="#ffd7e8"/>
+      <ellipse cx="197" cy="103" rx="9.5" ry="6.6" transform="rotate(-20 197 103)" fill="#ffd7e8"/>
+      <circle cx="188" cy="103" r="3.8" fill="#fff2f8"/>
+    </g>
+
+    <!-- 身体与水手领 -->
+    <path d="M110 170h20v18h-20z" fill="#ffdbe6"/>
+    <path d="M78 238c3-30 19-42 42-42s39 12 42 42z" fill="url(#mDress)"/>
+    <path d="M104 196l16 20 16-20c-4-4-10-6-16-6s-12 2-16 6z" fill="#fff8fc" opacity=".96"/>
+    <path d="M120 212l-15-7v14z" fill="#ff9ec4"/>
+    <path d="M120 212l15-7v14z" fill="#ff9ec4"/>
+    <circle cx="120" cy="212" r="4.4" fill="#ffe9f2" stroke="#e3799f" stroke-width="1.6"/>
+
+    <!-- 脸 -->
+    <ellipse cx="120" cy="130" rx="54" ry="50" fill="url(#mSkin)"/>
+
+    <!-- 刘海 -->
+    <path d="M66 130C64 84 88 58 120 58C152 58 176 84 174 130C163 112 150 108 138 114C132 104 126 104 120 114C114 104 108 104 102 114C90 108 77 112 66 130Z" fill="url(#mHair)"/>
+    <!-- 鬓发 -->
+    <path d="M64 122c-6 22-4 44 6 60 6-14 4-38 4-56z" fill="url(#mHair)"/>
+    <path d="M176 122c6 22 4 44-6 60-6-14-4-38-4-56z" fill="url(#mHair)"/>
+    <!-- 呆毛 -->
+    <path d="M126 60c-6-18 8-30 16-22-6 5-9 12-6 22" fill="none" stroke="url(#mHair)" stroke-width="7" stroke-linecap="round"/>
+
+    <!-- 眼睛 -->
+    <ellipse cx="98" cy="137" rx="13.5" ry="16.5" fill="#3a2a4e"/>
+    <ellipse cx="98" cy="142" rx="9.5" ry="9.5" fill="#8a63c4" opacity=".5"/>
+    <circle cx="93" cy="130" r="5" fill="#fff"/>
+    <circle cx="103.5" cy="145" r="2.6" fill="#ffd7e8"/>
+    <ellipse cx="142" cy="137" rx="13.5" ry="16.5" fill="#3a2a4e"/>
+    <ellipse cx="142" cy="142" rx="9.5" ry="9.5" fill="#8a63c4" opacity=".5"/>
+    <circle cx="137" cy="130" r="5" fill="#fff"/>
+    <circle cx="147.5" cy="145" r="2.6" fill="#ffd7e8"/>
+    <!-- 睫毛 -->
+    <path d="M83 121c4-8 15-10 24-6" fill="none" stroke="#3a2a4e" stroke-width="3.4" stroke-linecap="round"/>
+    <path d="M157 121c-4-8-15-10-24-6" fill="none" stroke="#3a2a4e" stroke-width="3.4" stroke-linecap="round"/>
+    <!-- 腮红与嘴 -->
+    <ellipse cx="78" cy="154" rx="11" ry="6.4" fill="#ffa9c8" opacity=".62"/>
+    <ellipse cx="162" cy="154" rx="11" ry="6.4" fill="#ffa9c8" opacity=".62"/>
+    <path d="M112 162c4 6 12 6 16 0" fill="none" stroke="#d76a8e" stroke-width="3" stroke-linecap="round"/>
+
+    <!-- 点缀星与花瓣 -->
+    <g fill="#ffd7e8">
+      <path d="M200 52l3.4 8 8 3.4-8 3.4-3.4 8-3.4-8-8-3.4 8-3.4z"/>
+      <path d="M34 166l2.2 5.4 5.4 2.2-5.4 2.2-2.2 5.4-2.2-5.4-5.4-2.2 5.4-2.2z" opacity=".82"/>
+    </g>
+    <g fill="#ffc3da" opacity=".92">
+      <path transform="translate(18 46) scale(.72)" d="M16 2c5 5.2 7 13.2.7 27L16 23.6 15.3 29C8 15.2 11 6.2 16 2z"/>
+      <path transform="translate(198 172) scale(.6) rotate(28)" d="M16 2c5 5.2 7 13.2.7 27L16 23.6 15.3 29C8 15.2 11 6.2 16 2z"/>
+    </g>
+  </symbol>
+</svg>
+
+<!-- ==================== 背景层 ==================== -->
+<div class="bg-aurora" aria-hidden="true"></div>
+<div class="sakura-layer" id="sakuraLayer" aria-hidden="true"></div>
+
+<noscript>
+  <p style="padding:16px;text-align:center">本控制台需要启用 JavaScript 才能使用，请在浏览器设置中开启后刷新页面。</p>
+</noscript>
+
+<!-- ==================== 登录页 ==================== -->
+<main id="loginView" class="login-view">
+  <div class="login-card">
+    <div class="login-form-side">
+      <div class="brand-lg">
+        <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-sakura"/></svg>
+        <div>
+          <h1 class="brand-title">樱隧</h1>
+          <p class="brand-sub">Sakura Tunnel · 服务端控制台</p>
+        </div>
+      </div>
+
+      <form id="loginForm" class="login-form" autocomplete="off">
+        <label class="field">
+          <span class="field-label">管理账号</span>
+          <input id="loginUser" class="input" type="text" placeholder="请输入管理账号" spellcheck="false" autocomplete="username">
+        </label>
+        <label class="field">
+          <span class="field-label">管理密码</span>
+          <input id="loginPass" class="input" type="password" placeholder="请输入管理密码" autocomplete="current-password">
+        </label>
+        <p id="loginError" class="login-error" role="alert"></p>
+        <button id="loginBtn" class="btn btn-primary btn-block" type="submit">进入控制台</button>
+        <p class="login-hint">凭据仅保存在当前标签页，关闭页面即自动清除</p>
+      </form>
+    </div>
+
+    <div class="login-art-side">
+      <div class="mascot-wrap">
+        <svg class="mascot" viewBox="0 0 240 260" role="img" aria-label="樱隧看板娘"><use href="#mascot"/></svg>
+      </div>
+      <p class="mascot-say">欢迎回来，主人～</p>
+    </div>
+  </div>
+</main>
+
+<!-- ==================== 主应用 ==================== -->
+<div id="appView" class="app" hidden>
+  <aside class="sidebar">
+    <div class="side-brand">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-sakura"/></svg>
+      <span class="side-brand-text">樱隧</span>
+    </div>
+    <nav class="nav" id="nav">
+      <button class="nav-item is-active" data-page="overview" type="button">
+        <svg class="nav-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-overview"/></svg><span>概览</span>
+      </button>
+      <button class="nav-item" data-page="proxies" type="button">
+        <svg class="nav-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-tunnel"/></svg><span>隧道</span>
+      </button>
+      <button class="nav-item" data-page="users" type="button">
+        <svg class="nav-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-users"/></svg><span>用户</span>
+      </button>
+      <button class="nav-item" data-page="access" type="button">
+        <svg class="nav-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-terminal"/></svg><span>一键接入</span>
+      </button>
+      <button class="nav-item" data-page="settings" type="button">
+        <svg class="nav-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-settings"/></svg><span>设置</span>
+      </button>
+    </nav>
+    <div class="side-foot">
+      <button class="nav-item" id="sideLogout" type="button">
+        <svg class="nav-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-logout"/></svg><span>退出登录</span>
+      </button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <h2 class="page-title" id="pageTitle">概览</h2>
+        <span class="page-sub" id="pageSub">实时监控</span>
+      </div>
+      <div class="topbar-right">
+        <span class="pill">服务端版本 <b id="serverVersion">--</b></span>
+        <button class="icon-btn" id="themeToggle" type="button" title="切换深色模式" aria-label="切换深色模式">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-moon" id="themeIcon"/></svg>
+        </button>
+        <button class="btn btn-ghost btn-sm" id="topLogout" type="button">退出</button>
+      </div>
+    </header>
+
+    <div class="content">
+      <!-- 概览 -->
+      <section class="page is-active" id="page-overview">
+        <div class="stat-grid" id="statGrid"></div>
+
+        <div class="card chart-card">
+          <div class="card-head">
+            <h3 class="card-title">实时速率</h3>
+            <div class="legend">
+              <span class="legend-item"><i class="legend-dot dot-in"></i>上行 <b id="rateIn">0 B/s</b></span>
+              <span class="legend-item"><i class="legend-dot dot-out"></i>下行 <b id="rateOut">0 B/s</b></span>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="rateChart" class="chart-canvas" height="172"></canvas></div>
+          <p class="chart-tip">每 5 秒采样一次，环形缓冲保留最近 60 个采样点</p>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3 class="card-title">最近隧道</h3>
+            <button class="btn btn-ghost btn-sm" id="goProxies" type="button">查看全部</button>
+          </div>
+          <div id="recentProxies" class="recent-list"></div>
+        </div>
+      </section>
+
+      <!-- 隧道 -->
+      <section class="page" id="page-proxies">
+        <div class="card">
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <div class="search">
+                <svg class="search-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-search"/></svg>
+                <input id="proxyQ" class="input" type="search" placeholder="搜索隧道名称 / 用户" spellcheck="false">
+              </div>
+              <select id="proxyType" class="input select" aria-label="按类型筛选">
+                <option value="">全部类型</option>
+                <option value="tcp">TCP</option>
+                <option value="udp">UDP</option>
+                <option value="http">HTTP</option>
+                <option value="https">HTTPS</option>
+                <option value="tcpmux">TCPMUX</option>
+                <option value="stcp">STCP</option>
+                <option value="sudp">SUDP</option>
+                <option value="xtcp">XTCP</option>
+              </select>
+              <select id="proxyStatus" class="input select" aria-label="按状态筛选">
+                <option value="">全部状态</option>
+                <option value="online">在线</option>
+                <option value="offline">离线</option>
+              </select>
+            </div>
+            <div class="toolbar-right">
+              <button class="btn btn-ghost btn-sm" id="proxyRefresh" type="button">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-refresh"/></svg>刷新
+              </button>
+              <button class="btn btn-danger btn-sm" id="proxyDelSel" type="button" disabled>
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-trash"/></svg>删除所选
+              </button>
+            </div>
+          </div>
+          <div class="table-wrap" id="proxyTableWrap"></div>
+          <div class="pager" id="proxyPager"></div>
+        </div>
+      </section>
+
+      <!-- 用户 -->
+      <section class="page" id="page-users">
+        <div class="card">
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <div class="search">
+                <svg class="search-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-search"/></svg>
+                <input id="userQ" class="input" type="search" placeholder="搜索用户名 / 备注" spellcheck="false">
+              </div>
+            </div>
+            <div class="toolbar-right">
+              <button class="btn btn-ghost btn-sm" id="userRefresh" type="button">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-refresh"/></svg>刷新
+              </button>
+              <button class="btn btn-primary btn-sm" id="userNew" type="button">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-plus"/></svg>新建用户
+              </button>
+            </div>
+          </div>
+          <div class="table-wrap" id="userTableWrap"></div>
+          <div class="pager" id="userPager"></div>
+        </div>
+      </section>
+
+      <!-- 一键接入 -->
+      <section class="page" id="page-access">
+        <div class="card">
+          <div class="card-head">
+            <h3 class="card-title">生成接入命令</h3>
+            <span class="muted">选择用户后生成安装命令</span>
+          </div>
+          <div class="access-pick">
+            <select id="accessUser" class="input select" aria-label="选择用户">
+              <option value="">加载中…</option>
+            </select>
+            <button class="btn btn-primary" id="accessGen" type="button">
+              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-terminal"/></svg>生成命令
+            </button>
+            <button class="btn btn-ghost btn-sm" id="accessReload" type="button">
+              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-refresh"/></svg>刷新用户
+            </button>
+          </div>
+          <div id="accessResult" class="access-result"></div>
+        </div>
+      </section>
+
+      <!-- 设置 -->
+      <section class="page" id="page-settings">
+        <div class="card">
+          <div class="card-head">
+            <h3 class="card-title">服务端配置</h3>
+            <span class="muted">只读 · 来自服务端</span>
+          </div>
+          <div class="kv-grid" id="cfgGrid"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3 class="card-title">外观与关于</h3></div>
+          <div class="theme-row">
+            <div>
+              <div class="theme-label">深色模式</div>
+              <div class="theme-desc">夜樱配色，夜间查看更柔和</div>
+            </div>
+            <button class="switch" id="themeSwitch" type="button" role="switch" aria-checked="false" aria-label="深色模式"></button>
+          </div>
+          <div class="theme-row">
+            <div>
+              <div class="theme-label">服务端版本</div>
+              <div class="theme-desc">当前运行中的服务端版本</div>
+            </div>
+            <span class="pill" id="setVersion">--</span>
+          </div>
+          <div class="theme-row">
+            <div>
+              <div class="theme-label">界面风格</div>
+              <div class="theme-desc">樱花玻璃拟态 · 飘落花瓣</div>
+            </div>
+            <span class="pill" id="setArt">樱花</span>
+          </div>
+          <div class="about-box">
+            <b>樱隧 · 基于 frp 二次开发</b><br>
+            本控制台为纯静态前端，零外部依赖、无任何外链资源，全部素材随服务端本地分发。<br>
+            流量单位统一为字节并自动换算；速率采样间隔 5 秒，页面隐藏时自动暂停轮询。
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap" aria-live="polite" aria-atomic="false"></div>
+<div class="modal-root" id="modalRoot" hidden></div>
+
+<script defer src="app.js"></script>
+</body>
+</html>
